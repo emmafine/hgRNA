@@ -78,10 +78,10 @@ for j=1:5
     T0(j) = 20+j;
 end
 
-
+J = zeros(3,100);
 for i=20:80
     testing = [createSpacer(i), pam];
-    T = count(testing,1000);
+    T = count(testing,500);
     J(i-19,1) = length(testing);
     J(i-19,2) = T(1);
     J(i-19,3) = T(2);
@@ -212,14 +212,14 @@ while (length(s)>=17)
     if (rand <= 0.05)
         if (strcmp(s(length(s)-2:end),'GGG')==0) %if the last 3 do not equal this, then PAM deleted
             s = deleting(s,'');
-            s2 = insert(s,insbp);
+            s = insert(s,insbp);
             p = p + 1;
         if p > 0
             break
         end
         else
             s = deleting(s,'');
-            s2 = insert(s,insbp);
+            s = insert(s,insbp);
             roundOfEdits = roundOfEdits + 1;
         end
     end
