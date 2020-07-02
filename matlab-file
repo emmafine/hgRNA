@@ -1,0 +1,239 @@
+clear; close all; clc;
+
+global sLength;
+global xmin; %xmin = 1
+global xmax; %xmax = 5
+global ymin; 
+global ymax;
+global zmin;
+global zmax;
+global cutSite;
+
+cutSite = 6;
+
+%% Creates a string of random basepairs of a certain length and adds PAM;
+       
+sLength = 30; %hgRNA length
+spacer = createSpacer(sLength);
+
+% Adds Pam to spacer sequence
+pam = 'GGG';
+spam = [spacer,pam];
+
+%% insert a bp x at the cutsite of length x where 1<=x<=5
+
+xmin=1;
+xmax=5;
+x = randi([xmin,xmax],1,1);
+
+insbp = createSpacer(x); %the insert seq of length x
+
+%This is for checking.
+star = '';
+for i =0:x-1
+    star = strcat(star,'*');
+end
+
+%Try running these two:
+a = insert(spam,star); 
+A = insert(spam,insbp);
+
+
+%% delete a bp y at the cutsite of length y where 1<=y<=5
+
+ymin=1;
+ymax=5;
+y = randi([ymin,ymax],1,1);
+
+dash = '';
+for i =0:y-1
+    dash = strcat(dash,'-');
+end
+
+zmin = 0;
+zmax = y;
+z = randi([zmin,zmax],1,1);
+
+
+%Try running these two:
+b = deleting(spam,dash); 
+B = deleting(spam,'');
+
+
+
+%% Main
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+s = spam;
+C = runDel(s);
+D = runInAndDel(s);
+E = count(s, 1000);
+
+
+T0 = zeros(5,1);
+
+for j=1:5
+    T0(j) = 20+j;
+end
+
+
+for i=20:80
+    testing = [createSpacer(i), pam];
+    T = count(testing,1000);
+    J(i-19,1) = length(testing);
+    J(i-19,2) = T(1);
+    J(i-19,3) = T(2);
+end
+
+hold on;
+
+x = J(:,1);
+y = J(:,2);
+sz = 25;
+%c = linspace(1,10,length(x));
+c = 'red';
+scatter(x,y,sz,c, 'filled');
+xlabel('Length of hgRNA (bp)') 
+ylabel('Percentage (%)')
+
+
+x2 = J(:,1);
+y2 = J(:,3);
+sz2 = 25;
+%c2 = linspace(1,10,length(x));
+c2 = [0, 0.4470, 0.7410];
+scatter(x2,y2,sz2,c2, 'filled');
+xlabel('Length of hgRNA spacer (bp)') 
+%ylabel('Percentage of hgRNAs with PAM deleted (%)')
+
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+%% functions
+
+function spacer = createSpacer(Length)
+s = 'AGCT';
+spacer = s(randi([1,length(s)],1,Length)); %generates hgRNA
+end
+
+
+function ins = insert(char,insert)
+  global cutSite;
+  Position = length(char) - cutSite;
+  ins = replaceBetween(char,Position,Position+1,insert,'Boundaries','exclusive');
+end
+
+
+function del = deleting(char,insert)
+  global cutSite;
+  global ymin;
+  global ymax;
+  global zmin;
+  
+  Position = length(char) - cutSite;
+ 
+  %Note: I ended up moving these into the function so that they generate
+  %different random value each time.
+  Y = randi([ymin,ymax],1,1);
+  zmax = Y; 
+  Z = randi([zmin,zmax],1,1);
+  del = replaceBetween(char,Position-Y+Z,Position+1+Z,insert,'Boundaries','exclusive');
+end
+
+
+function run = runDel(s)
+roundOfEdits = 0;
+p = 0;
+
+while (length(s)>=17)
+    if (strcmp(s(length(s)-2:end),'GGG')==0) %if the last 3 do not equal this, then PAM deleted
+        s = deleting(s,'');
+        p = p + 1;
+        if p > 0
+            break
+        end
+    else
+        s = deleting(s,'');
+        %disp(s);
+        roundOfEdits = roundOfEdits + 1;
+    end
+end
+run = [p roundOfEdits];
+end
+
+
+
+
+function run2 = runInAndDel(s)
+global xmin;
+global xmax;
+roundOfEdits = 0;
+p = 0;
+x = randi([xmin,xmax],1,1);
+
+insbp = createSpacer(x);
+
+while (length(s)>=17)
+   
+    % 74% of time deletion
+    if (rand <= 0.74)
+        if (strcmp(s(length(s)-2:end),'GGG')==0) %if the last 3 do not equal this, then PAM deleted
+            s = deleting(s,'');
+            p = p + 1;
+        if p > 0
+            break
+        end
+        else
+            s = deleting(s,'');
+            %disp(s);
+            roundOfEdits = roundOfEdits + 1;
+        end
+    end
+   
+    % 21% insertion
+    if (rand <= 0.21)
+        if (strcmp(s(length(s)-2:end),'GGG')==0) %if the last 3 do not equal this, then PAM deleted
+            s = insert(s,insbp);
+            p = p + 1;
+        if p > 0
+            break
+        end
+        else
+            s = insert(s,insbp);
+            %disp(s);
+            roundOfEdits = roundOfEdits + 1;
+        end
+    end
+   
+    % 5% insertion and deletion
+    if (rand <= 0.05)
+        if (strcmp(s(length(s)-2:end),'GGG')==0) %if the last 3 do not equal this, then PAM deleted
+            s = deleting(s,'');
+            s2 = insert(s,insbp);
+            p = p + 1;
+        if p > 0
+            break
+        end
+        else
+            s = deleting(s,'');
+            s2 = insert(s,insbp);
+            roundOfEdits = roundOfEdits + 1;
+        end
+    end
+end
+run2 = [p roundOfEdits];
+end
+
+function ct = count(char, rounds)
+R2 = zeros(1,rounds);
+for i=1:rounds
+    R = runInAndDel(char);
+    R2(i) = R(1);
+end
+sumPAM = sum(R2)/rounds * 100;
+sum17 = 100 - sumPAM;
+ct = [sumPAM, sum17];
+end
