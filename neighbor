@@ -1,0 +1,259 @@
+clear; close all; clc;
+
+global sLength;
+global xmin; %xmin = 1
+global xmax; %xmax = 5
+global ymin; 
+global ymax;
+global zmin;
+global zmax;
+global cutSite;
+
+cutSite = 6;
+
+%% Creates a string of random basepairs of a certain length and adds PAM;
+       
+sLength = 30; %hgRNA length
+spacer = createSpacer(sLength);
+
+% Adds Pam to spacer sequence
+pam = 'GGG';
+spam = [spacer,pam];
+
+%% insert a bp x at the cutsite of length x where 1<=x<=5
+
+xmin=1;
+xmax=5;
+x = randi([xmin,xmax],1,1);
+
+insbp = createSpacer(x); %the insert seq of length x
+
+
+%% delete a bp y at the cutsite of length y where 1<=y<=5
+
+ymin=1;
+ymax=5;
+y = randi([ymin,ymax],1,1);
+
+zmin = 0;
+zmax = y;
+z = randi([zmin,zmax],1,1);
+
+
+%% Main
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+s = spam;
+%del = deleting(s,'');
+[in,pp] = insert(s,insbp);
+[in,~] = insert(s,insbp);
+[~,pp] = insert(s,insbp);
+[a,aa] = runInAndDel2(s);
+
+
+
+
+G{1} = s;
+G{2} = repelem(G,2);
+
+H{1} = s;
+H{2} = repelem(H,2);
+
+[G{2}{1,1},H{2}{1,1}] = runInAndDel2(G{2}{1,1});
+[G{2}{1,2},H{2}{1,2}] = runInAndDel2(G{2}{1,2});
+
+for i=2:10
+    G{i+1} = repelem(G{1,i},2);
+    for j=1:length(G{i+1})
+        [G{i+1}{1,j},H{i+1}{1,j}] = runInAndDel2(G{i+1}{1,j});
+    end
+end
+
+G1 = string(zeros(10,512));
+G1(1,1) = string(G{1,1});
+for e = 2:10
+for f=1:2^(e-1)
+G1(e,f) = string(G{1,e}{1,f});
+end
+end
+
+Seqs = char(G1);
+
+
+%%%IMPORTANT
+H1 = string(zeros(10,512));
+H1(1,1) = string(H{1,1});
+for e = 2:10
+for f=1:2^(e-1)
+H1(e,f) = string(H{1,e}{1,f});
+end
+end
+
+
+% %Generating tree diagram
+% nodes(1) = 0;
+% nodes(2) = 1;
+% nodes(3) = 1;
+% 
+% height=10;
+% r2=2^height-1;
+% for N=2:(2*r2-1)
+% % nodes = [0 1 1 2 2 3 3 4 4 5 5 6 6 7 7 ]
+% nodes(N+2) = nodes(N)+1;
+% end
+% treeplot(nodes)
+% 
+% 
+% 
+% for n1=1:(2*r2-1)+2
+%     snodes(n1) = n1;
+% end
+
+
+% graph1 = digraph(snodes,nodes);
+% hgraph1 = plot(graph1)
+% labelnode(hgraph1,[2 1],{H{1}{1,1} H{1}})
+% labelnode(hgraph1,[3 1],{H{1,2}{1,2}})
+
+
+
+
+
+
+%cells dividing
+C{1} = 1;
+C{2} = repelem(C,2);
+D{1} = C{1};
+D{2} = C{2};
+
+C{2}{1,1} = 2;
+C{2}{1,2} = 2;
+D{2}{1,1} = 2;
+D{2}{1,2} = 2;
+
+i = 2;
+while i < 7
+    C{i+1} = repelem(C{1,i},2);
+    for j=1:length(C{i+1})
+        C{i+1}{1,j} = i+1;
+    end
+i = i +1;
+end
+
+
+% 
+% for i=2:5
+%     G{i+1} = repelem(G{1,i},2)
+%     for j=1:length(G{i+1})
+%         [G{i+1}{1,j},L{i+1}{1,j}] = [G{i+1} runInAndDel2(G{i+1}{1,j})]
+%         
+%     end
+% end
+
+
+
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+%% functions
+
+function spacer = createSpacer(Length)
+s = 'AGCT';
+spacer = s(randi([1,length(s)],1,Length)); %generates hgRNA
+end
+
+
+function [i,ins] = insert(char,insert)
+  global cutSite;
+  Position = length(char) - cutSite;
+  i = replaceBetween(char,Position,Position+1,insert,'Boundaries','exclusive');
+  ins = ['INS_',num2str(length(insert)),'bp_',insert];
+end
+
+
+function [d,del] = deleting(char,insert)
+  global cutSite;
+  global ymin;
+  global ymax;
+  global zmin;
+  
+  Position = length(char) - cutSite;
+  
+  Y = randi([ymin,ymax],1,1);
+  zmax = Y; 
+  Z = randi([zmin,zmax],1,1);
+  c = char(Position-Y+Z + 1:Position+1+Z -1);
+  d = replaceBetween(char,Position-Y+Z,Position+1+Z,insert,'Boundaries','exclusive');
+  del = ['DEL_',num2str(Y),'bp_', c]; %these are the deleted basepairs
+end
+
+
+function run = runDel(s)
+    if(length(s)>=17) && (strcmp(s(length(s)-2:end),'GGG')==1) 
+        [d,del] = deleting(s,''); 
+    else 
+    s = '0';
+    end
+    run = s;
+end
+
+
+function [run1,run2] = runInAndDel2(s)
+global xmin;
+global xmax;
+x = randi([xmin,xmax],1,1);
+a = s;
+aa = 'no change';
+
+insbp = createSpacer(x);
+
+% 74% of time deletion
+    if (rand <= 0.74)
+        if(length(s)<17) 
+            a = 'sD';
+            aa = 'sD';
+        elseif (strcmp(s(length(s)-2:end),'GGG')==0)
+            a = 'pD';
+            aa = 'pD';
+        else
+            [a,aa] = deleting(s,'');
+        end
+    end
+
+% 21% of time insertion
+    if (rand <= 0.21)
+        if(length(s)<17) 
+            a = 'sI';
+            aa = 'sI';
+        elseif (strcmp(s(length(s)-2:end),'GGG')==0)
+            a = 'pI';
+            aa = 'pI';
+         else
+            [a,aa] = insert(s,''); 
+        end
+    end
+
+% 5% insertion and deletion
+    if (rand <= 0.05)
+        
+        if(length(s)<17) 
+            a = 'sID';
+            aa = 'sID';
+        elseif(strcmp(s(length(s)-2:end),'GGG')==0)
+            a = 'pID';
+            aa = 'pID';
+         else
+            [a,aa] = deleting(s,''); 
+            [a,aa] = insert(s,insbp);
+        end
+    end
+run1 = a;
+run2 = aa;
+end
+
+
+
+
